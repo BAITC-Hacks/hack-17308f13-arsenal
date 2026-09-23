@@ -8,7 +8,7 @@ import { city } from "../../data/city";
 import { measures } from "../../data/measures";
 import { labels, DATA_VERSION } from "../../data/rules";
 import type { Decision, Indicator } from "../types";
-export const ANALYSIS_VERSION = "grounded-facts-v3";
+export const ANALYSIS_VERSION = "grounded-facts-v4";
 type Fact = {
   id: string;
   category: "improvement" | "problem" | "detail";
@@ -147,7 +147,16 @@ export function verifyAnalysis(
   };
   const improvement = fact(answer.improvementFactId, "improvement"),
     problem = fact(answer.problemFactId, "problem");
-  const details = [...new Set(answer.detailFactIds)].map((id) => fact(id));
+  // Negative effects must not disappear when the model omits them from its selection.
+  const tradeoffIds = result.realizedEffects.flatMap((m) =>
+    Object.entries(m.effects)
+      .filter(([, value]) => value < 0)
+      .map(([indicator]) => `effect:${m.id}:${indicator}`),
+  );
+  const tradeoffs = tradeoffIds.map((id) => fact(id));
+  const details = [...new Set([...answer.detailFactIds, ...tradeoffIds])].map(
+    (id) => fact(id),
+  );
   let alternative = null,
     next =
       "Проверьте другой вариант распределения мероприятий. Замените мероприятие или измените его район.";
@@ -195,12 +204,14 @@ export function verifyAnalysis(
   }
   return analysisSchema.parse({
     improvement,
-    problem,
+    problem: tradeoffs.length
+      ? `${problem} Компромиссы выбранных мероприятий: ${tradeoffs.join(" ")}`
+      : problem,
     next,
     factIds: [
       answer.improvementFactId,
       answer.problemFactId,
-      ...answer.detailFactIds,
+      ...new Set([...answer.detailFactIds, ...tradeoffIds]),
     ],
     details,
     alternative,

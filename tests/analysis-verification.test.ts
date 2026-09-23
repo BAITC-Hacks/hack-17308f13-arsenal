@@ -132,3 +132,36 @@ it("короткие выводы и подробности сформирова
   expect(a.details[0]).toContain("Средневзвешенная оценка города");
   expect(a.problem).toContain("не осталось");
 });
+
+it("отрицательный эффект обязателен, даже если модель не выбрала подробности", () => {
+  const plan = [
+    { measureId: "M11", districtId: "nura" },
+    { measureId: "M12" },
+    { measureId: "M14" },
+    { measureId: "M7", districtId: "nura" },
+    { measureId: "M8", districtId: "nura" },
+  ];
+  const result = simulateScenario(plan);
+  const a = verifyAnalysis(
+    { ...JSON.parse(modelAnswer), detailFactIds: [] },
+    result,
+    plan,
+  );
+  expect(a.problem).toContain("Компромиссы выбранных мероприятий");
+  expect(a.problem).toContain("Безопасные переходы и школьные зоны");
+  expect(a.problem).toContain("только в районе Нура");
+  expect(a.problem).toContain("Разгрузка дорог -1,75");
+  expect(a.factIds).toContain("effect:M11:T1");
+  expect(a.details).toHaveLength(1);
+  const selected = verifyAnalysis(
+    { ...JSON.parse(modelAnswer), detailFactIds: ["effect:M11:T1"] },
+    result,
+    plan,
+  );
+  expect(selected.details).toHaveLength(1);
+});
+
+it("план без отрицательных эффектов не получает выдуманный компромисс", () => {
+  const a = verifyAnalysis(modelAnswer, simulateScenario(example), example);
+  expect(a.problem).not.toContain("Компромиссы выбранных мероприятий");
+});
