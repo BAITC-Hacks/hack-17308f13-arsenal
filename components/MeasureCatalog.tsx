@@ -1,3 +1,5 @@
+import { plural } from "../lib/format";
+import { measureDescription } from "../lib/measure-copy";
 import { useState } from "react";
 import { city } from "../data/city";
 import { measures } from "../data/measures";
@@ -6,16 +8,24 @@ import { previewDecision } from "../lib/validate";
 import type { Decision, Direction, Measure, Indicator } from "../lib/types";
 export default function MeasureCatalog({
   decisions,
-  onDistrict,
+  selectedDistrictId,
+  onChooseDistrict,
   onAdd,
 }: {
   decisions: Decision[];
-  onDistrict: (m: Measure) => void;
-  onAdd: (next: Decision[]) => void;
+  selectedDistrictId: string;
+  onChooseDistrict: () => void;
+  onAdd: (measure: Measure) => void;
 }) {
   const [filter, setFilter] = useState<Direction | "all">("all");
   return (
     <section aria-label="Каталог мероприятий">
+      {decisions.length === 5 && (
+        <p className="catalog-complete" role="status">
+          Выбраны все 5 мероприятий. Перейдите к проверке или удалите
+          мероприятие для замены.
+        </p>
+      )}
       <div className="filters" aria-label="Направления">
         {["all", ...Object.keys(directions)].map((dir) => (
           <button
@@ -32,21 +42,25 @@ export default function MeasureCatalog({
         {measures
           .filter((m) => filter === "all" || m.direction === filter)
           .map((m) => {
-            const selected = decisions.some((d) => d.measureId === m.id);
+            const selected = decisions.find((d) => d.measureId === m.id);
+            const districtName = city.find(
+              (d) => d.id === selectedDistrictId,
+            )?.name;
             const previews =
               m.scope === "city"
                 ? [previewDecision(decisions, { measureId: m.id })]
-                : city.map((d) =>
+                : (selectedDistrictId
+                    ? city.filter((d) => d.id === selectedDistrictId)
+                    : city
+                  ).map((d) =>
                     previewDecision(decisions, {
                       measureId: m.id,
                       districtId: d.id,
                     }),
                   );
             const allowed = previews.some((p) => p.valid),
-              reasons = allowed ? [] : previews[0].errors;
-            const positive = Object.entries(m.effects)
-              .filter(([, v]) => v > 0)
-              .map(([k]) => labels[k as Indicator].toLocaleLowerCase("ru"));
+              reasons =
+                allowed || decisions.length === 5 ? [] : previews[0].errors;
             const negative = Object.entries(m.effects).filter(([, v]) => v < 0);
             return (
               <article
@@ -59,24 +73,26 @@ export default function MeasureCatalog({
                   <b className="price">{m.cost} ед.</b>
                 </div>
                 <h3 id={`measure-${m.id}`}>{m.name}</h3>
-                <p className="effect-description">
-                  Улучшает показатели: {positive.join(", ")}.
-                </p>
+                <p className="effect-description">{measureDescription(m)}</p>
                 {negative.map(([k]) => (
                   <p key={k} className="caution">
-                    Компромисс: снижается показатель «
-                    {labels[k as Indicator].toLocaleLowerCase("ru")}».
+                    {k === "T1"
+                      ? "В модели также увеличивается загруженность дорог."
+                      : `В модели также снижается показатель «${labels[k as Indicator].toLocaleLowerCase("ru")}».`}
                   </p>
                 ))}
                 <p className="meta">
-                  {m.scope === "city" ? "Весь город" : "Один район"} · Начало
-                  через {m.lag} кв.
+                  Начнёт действовать через {m.lag}{" "}
+                  {plural(m.lag, "квартал", "квартала", "кварталов")}
                 </p>
                 <details>
                   <summary>Подробнее</summary>
                   <p className="hint">
-                    {m.id} · Полные эффекты до учёта задержки. Горизонт расчёта
-                    — 8 кварталов.
+                    Ниже — полные изменения отдельных показателей, до учёта
+                    задержки. В итоговом расчёте каждое число умножается на (8 −{" "}
+                    {m.lag}) / 8: мероприятие действует не все 8 кварталов. Это
+                    не изменение общего индекса. Эффекты с учётом задержки можно
+                    посмотреть в подробностях результата.
                   </p>
                   <ul className="effects">
                     {Object.entries(m.effects).map(([k, v]) => (
@@ -91,23 +107,32 @@ export default function MeasureCatalog({
                   </ul>
                 </details>
                 <div className="card-action">
+                  <p className="measure-target">
+                    <strong>
+                      {m.scope === "city"
+                        ? "Действует на весь город"
+                        : `Район: ${selected ? city.find((d) => d.id === selected.districtId)?.name : (districtName ?? "не выбран")}`}
+                    </strong>
+                  </p>
                   <button
                     className={selected ? "" : "outline-primary"}
                     disabled={!selected && !allowed}
-                    aria-disabled={selected || !allowed}
+                    aria-disabled={!!selected || !allowed}
                     aria-describedby={
                       reasons.length ? `reason-${m.id}` : undefined
                     }
                     onClick={() => {
                       if (selected || !allowed) return;
-                      m.scope === "district"
-                        ? onDistrict(m)
-                        : onAdd(previews[0].next);
+                      if (m.scope === "district" && !selectedDistrictId) {
+                        onChooseDistrict();
+                        return;
+                      }
+                      onAdd(m);
                     }}
                   >
                     {selected
-                      ? "✓ В плане"
-                      : m.scope === "district"
+                      ? `В плане · ${city.find((d) => d.id === selected.districtId)?.name ?? "Весь город"}`
+                      : m.scope === "district" && !selectedDistrictId
                         ? "Выбрать район"
                         : "Добавить в план"}
                   </button>

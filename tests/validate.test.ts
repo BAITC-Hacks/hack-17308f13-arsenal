@@ -23,7 +23,7 @@ it.each([0, 1, 2, 3, 4, 6])("число решений %s запрещено", (
 it("повторы", () =>
   expect(
     validateScenario([...example.slice(0, 4), example[0]]).errors.join(),
-  ).toContain("повтор"));
+  ).toContain("уже в плане"));
 it("не более двух мер направления", () =>
   expect(
     validateScenario(pick(["M7", "M8", "M9", "M12", "M10"])).errors.join(),

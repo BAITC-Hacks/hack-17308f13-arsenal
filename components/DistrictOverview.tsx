@@ -7,8 +7,8 @@ export default function DistrictOverview() {
     <details className="card district-overview">
       <summary>Посмотреть проблемы районов</summary>
       <p className="muted">
-        Исходный Score: {format(baseline.score)} · Критических показателей:{" "}
-        {baseline.critical.length}. Чем выше значение, тем лучше.
+        Исходный индекс качества жизни: {format(baseline.score)} · Показателей
+        ниже нормы: {baseline.critical.length}. Чем выше значение, тем лучше.
       </p>
       <div className="district-grid">
         {baseline.districts.map((d) => (

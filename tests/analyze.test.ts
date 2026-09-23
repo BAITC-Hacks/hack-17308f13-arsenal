@@ -1,3 +1,4 @@
+import { modelAnswer } from "./analysis-fixture";
 import { it, expect, vi } from "vitest";
 import { createAnalyzeHandler } from "../lib/server/analyze";
 import { RequestLimits } from "../lib/server/request-limits";
@@ -55,7 +56,7 @@ it("ошибки провайдера не раскрывают секреты, 
     .mockRejectedValueOnce(
       new Error("test-placeholder Authorization private-provider-error"),
     )
-    .mockResolvedValueOnce("Анализ");
+    .mockResolvedValueOnce(modelAnswer);
   const h = createAnalyzeHandler(p, new RequestLimits(), env),
     r = await h(req());
   expect(r.status).toBe(502);
@@ -69,7 +70,7 @@ it("ошибки провайдера не раскрывают секреты, 
   expect((await h(req())).status).toBe(200);
 });
 it("сервер пересчитывает, кэш нормализует порядок и учитывает модель", async () => {
-  const p = vi.fn().mockResolvedValue("Сильные стороны: улучшение"),
+  const p = vi.fn().mockResolvedValue(modelAnswer),
     config = env(),
     h = createAnalyzeHandler(p, new RequestLimits(), () => config);
   const a = await (await h(req())).json(),
@@ -77,7 +78,7 @@ it("сервер пересчитывает, кэш нормализует по�
   expect(a.scenarioId).toBe(b.scenarioId);
   expect(b.cached).toBe(true);
   expect(p).toHaveBeenCalledTimes(1);
-  expect(p.mock.calls[0][0].after.score).toBeCloseTo(56.54307, 8);
+  expect(p.mock.calls[0][0].finalScore).toBeCloseTo(56.54307, 8);
   expect(JSON.stringify(p.mock.calls[0][0])).not.toContain("test-placeholder");
   config.OPENAI_MODEL = "other";
   await h(req());
@@ -120,7 +121,42 @@ it("API возвращает 429 при двух активных запроса
   const pending = h(req());
   await vi.waitFor(() => expect(p).toHaveBeenCalledTimes(1));
   expect((await h(req())).status).toBe(429);
-  resolve("Анализ");
+  resolve(modelAnswer);
   expect((await pending).status).toBe(200);
   limits.release();
+});
+
+it("невалидный ответ модели не кэшируется и не раскрывает его содержание", async () => {
+  const p = vi
+    .fn()
+    .mockResolvedValueOnce(
+      JSON.stringify({
+        ...JSON.parse(modelAnswer),
+        detailFactIds: ["fabricated-private-fact"],
+      }),
+    )
+    .mockResolvedValueOnce(modelAnswer);
+  const h = createAnalyzeHandler(p, new RequestLimits(), env),
+    bad = await h(req());
+  expect(bad.status).toBe(502);
+  expect(await bad.text()).not.toContain("fabricated");
+  const good = await h(req());
+  expect(good.status).toBe(200);
+  expect(p).toHaveBeenCalledTimes(2);
+});
+it("старый кэш не используется после смены версии AI-контракта", async () => {
+  const { DATA_VERSION } = await import("../data/rules");
+  const { scenarioId } = await import("../lib/scenario-schema");
+  const guard = new RequestLimits();
+  guard.set(
+    JSON.stringify([DATA_VERSION, env().OPENAI_MODEL, scenarioId(example)]),
+    "старый ошибочный разбор",
+  );
+  const p = vi.fn().mockResolvedValue(modelAnswer);
+  const response = await (
+    await createAnalyzeHandler(p, guard, env)(req())
+  ).json();
+  expect(p).toHaveBeenCalledOnce();
+  expect(response.cached).toBe(false);
+  expect(response.analysis.improvement).toContain("Индекс качества жизни");
 });

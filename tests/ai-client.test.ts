@@ -1,3 +1,4 @@
+import { analysisFixture } from "./analysis-fixture";
 import { it, expect, vi } from "vitest";
 import { AnalysisRequest, type AiState } from "../lib/ai-client";
 import { example } from "../data/example";
@@ -6,11 +7,12 @@ const id = scenarioId(example);
 const response = (body: unknown, status = 200) =>
   Response.json(body, { status });
 it("один запрос при повторном расчёте/возврате, повтор только явно", async () => {
-  const fetcher = vi
-    .fn()
-    .mockResolvedValue(
-      response({ scenarioId: id, analysis: "Сильные стороны: текст" }),
-    );
+  const fetcher = vi.fn().mockResolvedValue(
+    response({
+      scenarioId: id,
+      analysis: analysisFixture("Сильные стороны: текст"),
+    }),
+  );
   const publish = vi.fn();
   const client = new AnalysisRequest(publish, fetcher);
   const first = client.run(example, id);
@@ -21,10 +23,10 @@ it("один запрос при повторном расчёте/возвра�
   expect(publish).toHaveBeenLastCalledWith({
     status: "success",
     scenarioId: id,
-    text: "Сильные стороны: текст",
+    analysis: analysisFixture("Сильные стороны: текст"),
   });
   fetcher.mockResolvedValue(
-    response({ scenarioId: id, analysis: "Новый текст" }),
+    response({ scenarioId: id, analysis: analysisFixture("Новый текст") }),
   );
   await client.run(example, id, true);
   expect(fetcher).toHaveBeenCalledTimes(2);
@@ -40,21 +42,25 @@ it("поздний ответ старого плана не заменяет н
         }),
     )
     .mockResolvedValueOnce(
-      response({ scenarioId: "new", analysis: "Новый план" }),
+      response({ scenarioId: "new", analysis: analysisFixture("Новый план") }),
     );
   const states: AiState[] = [];
   const client = new AnalysisRequest((s) => states.push(s), transport);
   const old = client.run(example, id);
   client.invalidate();
   await client.run(example, "new");
-  finish(response({ scenarioId: id, analysis: "Старый план" }));
+  finish(
+    response({ scenarioId: id, analysis: analysisFixture("Старый план") }),
+  );
   await old;
   expect(states.at(-1)).toEqual({
     status: "success",
     scenarioId: "new",
-    text: "Новый план",
+    analysis: analysisFixture("Новый план"),
   });
-  expect(states.some((s) => s.text === "Старый план")).toBe(false);
+  expect(states.some((s) => s.analysis?.improvement === "Старый план")).toBe(
+    false,
+  );
   expect(transport.mock.calls[0][1].signal.aborted).toBe(true);
 });
 it.each(["AI_DISABLED", "AI_NOT_CONFIGURED"])(
@@ -76,7 +82,7 @@ it.each(["AI_DISABLED", "AI_NOT_CONFIGURED"])(
 it("ошибки, чужой сценарий и неверный JSON не раскрывают внутренний текст", async () => {
   for (const r of [
     response({ error: "stack trace secret" }, 502),
-    response({ scenarioId: "other", analysis: "incorrect" }),
+    response({ scenarioId: "other", analysis: analysisFixture("incorrect") }),
     new Response("not json"),
   ]) {
     const publish = vi.fn();

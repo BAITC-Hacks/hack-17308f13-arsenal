@@ -1,8 +1,9 @@
+import { analysisSchema, type Analysis } from "./analysis-schema";
 import type { Decision } from "./types";
 export type AiState = {
   status: "idle" | "loading" | "success" | "error" | "disabled";
   scenarioId?: string;
-  text?: string;
+  analysis?: Analysis;
 };
 // One active request per mounted simulator. A revision also protects against transports
 // that finish after abort. No network call is tied to React render/effect execution.
@@ -60,11 +61,14 @@ export class AnalysisRequest {
       }
       if (
         data?.scenarioId !== scenarioId ||
-        typeof data.analysis !== "string" ||
-        !data.analysis.trim()
+        !analysisSchema.safeParse(data.analysis).success
       )
         throw new Error("Invalid analysis");
-      this.update({ status: "success", scenarioId, text: data.analysis });
+      this.update({
+        status: "success",
+        scenarioId,
+        analysis: analysisSchema.parse(data.analysis),
+      });
     } catch {
       if (revision === this.revision && !controller.signal.aborted)
         this.update({ status: "error", scenarioId });

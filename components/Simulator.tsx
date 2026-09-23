@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { example } from "../data/example";
-import { validateScenario } from "../lib/validate";
+import { validateScenario, previewDecision } from "../lib/validate";
 import { scenarioId } from "../lib/scenario-schema";
 import { simulateScenario, type Simulation } from "../lib/simulate";
 import { AnalysisRequest, type AiState } from "../lib/ai-client";
@@ -17,7 +17,7 @@ import ScenarioResults, { Synergies } from "./ScenarioResults";
 
 type Step = 1 | 2 | 3;
 export default function Simulator() {
-  const [districtContext, setDistrictContext] = useState("");
+  const [selectedDistrictId, setSelectedDistrictId] = useState("");
   const [step, setStep] = useState<Step>(1),
     [decisions, setDecisions] = useState<Decision[]>([]),
     [reviewed, setReviewed] = useState(false),
@@ -25,13 +25,13 @@ export default function Simulator() {
     [ai, setAi] = useState<AiState>({ status: "idle" });
   const [picker, setPicker] = useState<{
       measure: Measure;
-      editing: boolean;
     } | null>(null),
     [mobilePlan, setMobilePlan] = useState(false),
     [confirmation, setConfirmation] = useState<"reset" | "example" | null>(
       null,
     ),
     [notice, setNotice] = useState("");
+  const decisionsRef = useRef(decisions);
   const heading = useRef<HTMLHeadingElement>(null),
     calculating = useRef(false);
   const analysis = useRef<AnalysisRequest | null>(null);
@@ -53,11 +53,37 @@ export default function Simulator() {
     [step, decisions],
   );
   function change(next: Decision[]) {
+    decisionsRef.current = next;
     analysis.current!.invalidate();
     setResult(null);
     setReviewed(false);
     setNotice("");
     setDecisions(next);
+  }
+  function chooseDistrict() {
+    setNotice("Выберите район, затем добавьте мероприятие");
+    const dropdown = document.getElementById("district-context");
+    dropdown?.scrollIntoView({ block: "center", behavior: "smooth" });
+    dropdown?.focus({ preventScroll: true });
+  }
+  function addMeasure(measure: Measure) {
+    if (measure.scope === "district" && !selectedDistrictId) {
+      chooseDistrict();
+      return;
+    }
+    const decision = {
+      measureId: measure.id,
+      ...(measure.scope === "district"
+        ? { districtId: selectedDistrictId }
+        : {}),
+    };
+    const checked = previewDecision(decisionsRef.current, decision);
+    if (!checked.valid) {
+      setNotice(checked.errors.join(" "));
+      return;
+    }
+    change(checked.next);
+    setNotice(`«${measure.name}» добавлено в план.`);
   }
   function navigate(next: Step) {
     if (next === 2 && (!reviewed || !validation.valid)) return;
@@ -87,7 +113,7 @@ export default function Simulator() {
     }
   }
   function edit(m: Measure) {
-    setPicker({ measure: m, editing: true });
+    setPicker({ measure: m });
   }
   function remove(id: string) {
     change(decisions.filter((d) => d.measureId !== id));
@@ -107,14 +133,15 @@ export default function Simulator() {
   }
   const title =
     step === 1
-      ? "Какие изменения нужны городу?"
+      ? "Составьте план развития города"
       : step === 2
         ? validation.valid
-          ? "Всё готово к расчёту"
+          ? "Проверьте свой план"
           : "План требует исправления"
         : "Результат вашего плана";
   const plan = (
     <PlanSummary
+      selectedDistrictId={selectedDistrictId}
       decisions={decisions}
       onEdit={edit}
       onRemove={remove}
@@ -167,7 +194,10 @@ export default function Simulator() {
             {title}
           </h1>
           {step === 1 && (
-            <p>Выберите 5 мероприятий на 100 единиц и сравните результат.</p>
+            <p>
+              Выберите 5 мероприятий в пределах бюджета 100 единиц. Посмотрите,
+              как изменятся показатели города за 2 условных года.
+            </p>
           )}
           {step === 2 && validation.valid && (
             <p>
@@ -179,43 +209,38 @@ export default function Simulator() {
         {step === 1 && (
           <>
             <ul className="rules">
-              <li>Ровно 5 решений</li>
-              <li>Не более 2 мер из одного направления</li>
-              <li>Бюджет до 100 единиц</li>
+              <li>Ровно 5 мероприятий</li>
+              <li>Не больше 2 из одного направления</li>
+              <li>Бюджет — до 100 единиц</li>
             </ul>
             <p className="hint">
-              Выбирать по одной мере каждого направления необязательно.
+              Выбирать по одному мероприятию каждого направления необязательно.
             </p>
             <DistrictMap
-              selected={districtContext}
-              onSelect={setDistrictContext}
+              selected={selectedDistrictId}
+              onSelect={setSelectedDistrictId}
             />
             <DistrictOverview />
             <div className="catalog-context" aria-live="polite">
-              <span>
-                Район:{" "}
-                <b>
-                  {city.find((d) => d.id === districtContext)?.name ??
-                    "не выбран"}
-                </b>
-              </span>
-              {districtContext && (
-                <button onClick={() => setDistrictContext("")}>Сбросить</button>
-              )}
+              Район для новых мероприятий:{" "}
+              <b>
+                {city.find((d) => d.id === selectedDistrictId)?.name ??
+                  "район не выбран"}
+              </b>
             </div>
             <div className="build-toolbar">
-              <h2>Мероприятия для вашего плана</h2>
+              <h2>Выберите мероприятия</h2>
               <button
                 onClick={() =>
                   decisions.length
                     ? setConfirmation("example")
                     : (change(structuredClone(example)),
                       setNotice(
-                        "Пример загружен. Проверьте пять выбранных мероприятий.",
+                        "Готовый план выбран. Проверьте пять мероприятий и их районы.",
                       ))
                 }
               >
-                Загрузить пример
+                Попробовать готовый план
               </button>
             </div>
             {notice && (
@@ -226,8 +251,9 @@ export default function Simulator() {
             <div className="workspace">
               <MeasureCatalog
                 decisions={decisions}
-                onDistrict={(measure) => setPicker({ measure, editing: false })}
-                onAdd={change}
+                selectedDistrictId={selectedDistrictId}
+                onChooseDistrict={chooseDistrict}
+                onAdd={addMeasure}
               />
               <aside className="card desktop-plan" aria-label="Ваш план">
                 {plan}
@@ -236,14 +262,14 @@ export default function Simulator() {
                     className="text-button"
                     onClick={() => setConfirmation("reset")}
                   >
-                    Начать заново
+                    Сбросить план
                   </button>
                 )}
               </aside>
             </div>
             <div className="mobile-bar">
               <div className="row">
-                <span>{draft.spent}/100 ед.</span>
+                <span>Бюджет: {draft.spent}/100 ед.</span>
                 <button
                   aria-haspopup="dialog"
                   onClick={() => setMobilePlan(true)}
@@ -265,7 +291,7 @@ export default function Simulator() {
         {step === 2 && (
           <div className="review-layout">
             <div className="card">
-              <h2>Ваши пять решений</h2>
+              <h2>Ваши пять мероприятий</h2>
               <PlanList decisions={decisions} />
             </div>
             <div className="review-side">
@@ -285,7 +311,7 @@ export default function Simulator() {
                   disabled={!validation.valid}
                   onClick={calculate}
                 >
-                  Рассчитать результат →
+                  Посмотреть результат
                 </button>
                 <button className="full" onClick={() => setStep(1)}>
                   Изменить план
@@ -293,7 +319,7 @@ export default function Simulator() {
               </div>
               {preview && (
                 <div className="card">
-                  <h2>Совместные эффекты</h2>
+                  <h2>Какие мероприятия усиливают друг друга</h2>
                   <Synergies result={preview} />
                 </div>
               )}
@@ -321,7 +347,7 @@ export default function Simulator() {
           {plan}
           {decisions.length > 0 && (
             <button onClick={() => setConfirmation("reset")}>
-              Начать заново
+              Сбросить план
             </button>
           )}
         </Modal>
@@ -329,8 +355,6 @@ export default function Simulator() {
       {picker && (
         <DistrictPicker
           measure={picker.measure}
-          editing={picker.editing}
-          initialDistrictId={districtContext}
           decisions={decisions}
           onClose={() => setPicker(null)}
           onConfirm={(next) => {
@@ -345,24 +369,22 @@ export default function Simulator() {
         <Modal
           title={
             confirmation === "reset"
-              ? "Начать заново?"
-              : "Заменить план примером?"
+              ? "Сбросить план?"
+              : "Заменить план готовым?"
           }
           onClose={() => setConfirmation(null)}
         >
           <p>
             {confirmation === "reset"
-              ? "Все выбранные мероприятия и результат будут удалены."
-              : "Текущие решения будут заменены готовым примером."}
+              ? "Выбранные мероприятия и текущий результат будут удалены."
+              : "Выбранные мероприятия будут заменены готовым планом. Текущий результат будет удалён."}
           </p>
           <div className="page-actions">
-            <button onClick={() => setConfirmation(null)}>
-              Сохранить текущий план
-            </button>
+            <button onClick={() => setConfirmation(null)}>Отмена</button>
             <button className="primary" onClick={confirm}>
               {confirmation === "reset"
-                ? "Да, начать заново"
-                : "Загрузить пример"}
+                ? "Сбросить"
+                : "Попробовать готовый план"}
             </button>
           </div>
         </Modal>

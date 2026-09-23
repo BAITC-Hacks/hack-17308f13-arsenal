@@ -1028,3 +1028,375 @@ header .brand {
 .step-1 .step-heading {
   padding-top: 8px;
 }
+
+/* Geography is identical at every viewport; only the SVG viewport scales. */
+.district-map {
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 12px;
+  background: #fff;
+}
+.district-map .geographic-map {
+  display: block;
+  width: 100%;
+  height: 330px;
+  min-height: 0;
+}
+.geographic-map .district-shape {
+  fill: #eef4f3;
+  stroke: #91aaa6;
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+.geographic-map .map-region:nth-of-type(2n) .district-shape {
+  fill: #e5efed;
+}
+.geographic-map .map-region:hover .district-shape {
+  fill: #d5eae5;
+  stroke: #087f78;
+  stroke-width: 1.5;
+}
+.geographic-map .map-region.map-selected .district-shape {
+  fill: #92d5c7;
+  stroke: #087f78;
+  stroke-width: 2;
+}
+.geographic-map .map-region:focus-visible .district-shape {
+  stroke: #99600c;
+  stroke-width: 3;
+  stroke-dasharray: 4 3;
+}
+.map-river {
+  fill: none;
+  stroke: #79bfe0;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.geographic-map .river-label {
+  fill: #387b9a;
+  font-size: 27px;
+  font-style: italic;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.map-label {
+  cursor: pointer;
+}
+.map-label > rect {
+  fill: #ffffffed;
+  stroke: #dae7e3;
+  stroke-width: 2;
+}
+.map-label.label-selected > rect {
+  fill: #e7f7f1;
+  stroke: #087f78;
+}
+.geographic-map .map-name {
+  font-size: 36px;
+  font-weight: 600;
+  fill: var(--ink);
+  text-anchor: middle;
+  pointer-events: none;
+}
+.geographic-map .map-score {
+  font-size: 33px;
+  fill: #345a61;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.map-leader {
+  fill: none;
+  stroke: #809b98;
+  stroke-width: 1;
+}
+.map-critical-badge circle {
+  fill: #ffde97;
+  stroke: #b57914;
+  stroke-width: 2;
+}
+.map-critical-badge text {
+  fill: #704600;
+  font-size: 28px;
+  font-weight: bold;
+  text-anchor: middle;
+}
+.north-marker path {
+  fill: none;
+  stroke: #627d7e;
+  stroke-width: 1.5;
+}
+.north-marker text {
+  fill: #627d7e;
+  text-anchor: middle;
+  font-size: 31px;
+}
+.map-legend {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.legend-critical {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #ffde97;
+  color: #704600;
+  width: 21px;
+  height: 21px;
+  flex-shrink: 0;
+  font-weight: bold;
+}
+.district-map figcaption span {
+  display: block;
+}
+.district-map figcaption a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: var(--teal);
+}
+@media (max-width: 760px) {
+  .district-map {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+  .district-map .geographic-map {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 380px;
+  }
+  .district-map .map-controls p {
+    grid-column: 1/-1;
+  }
+  .district-map figcaption {
+    font-size: 10px;
+    line-height: 1.5;
+  }
+}
+.geographic-map {
+  font-family: Arial, Helvetica, sans-serif;
+}
+.geographic-map .map-name {
+  font-size: 40px;
+}
+.geographic-map .map-score {
+  font-size: 36px;
+}
+/* The same geography is fitted more tightly and rendered at a larger scale. */
+.district-map {
+  grid-template-columns: minmax(0, 26%) minmax(0, 74%);
+  gap: 0;
+}
+.district-map .map-controls {
+  padding-right: 20px;
+}
+.district-map figure {
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+}
+.district-map .geographic-map {
+  width: 100%;
+  height: 450px;
+  max-height: none;
+}
+.compact-district-editor .district-options {
+  margin: 8px 0;
+}
+.compact-district-editor .district-option {
+  padding: 9px 12px;
+  margin: 6px 0;
+}
+.compact-district-editor .district-option:has(input:checked) {
+  padding: 8px 11px;
+}
+.district-save {
+  position: sticky;
+  bottom: -24px;
+  background: white;
+  padding: 8px 0;
+}
+@media (max-width: 760px) {
+  .district-map {
+    grid-template-columns: 1fr;
+  }
+  .district-map .map-controls {
+    padding-right: 0;
+  }
+  .district-map .geographic-map {
+    width: 100%;
+    height: auto;
+    max-height: 460px;
+  }
+  .district-save {
+    bottom: -18px;
+  }
+}
+.measure .measure-target {
+  margin: 4px 0 8px;
+  color: var(--ink);
+  font-size: 14px;
+}
+/* Budget and continuation stay outside the scrollable list. */
+.desktop-plan {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: calc(100dvh - 32px);
+}
+.plan-summary {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.desktop-plan .plan-summary {
+  flex: 1 1 auto;
+}
+.plan-summary > h2,
+.plan-summary > .budget,
+.plan-footer {
+  flex: 0 0 auto;
+}
+.plan-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  flex: 1 1 auto;
+  scrollbar-gutter: stable;
+}
+.plan-footer {
+  border-top: 1px solid var(--line);
+  background: white;
+  padding-top: 7px;
+}
+.plan-footer .hint {
+  margin: 2px 0 5px;
+}
+.plan-footer .full {
+  margin: 3px 0;
+}
+.desktop-plan > .text-button {
+  flex-shrink: 0;
+  min-height: 30px;
+  padding: 5px 0 0;
+  font-size: 12px;
+}
+.plan-summary .plan-list {
+  margin: 3px 0;
+}
+.plan-summary .plan-list li {
+  padding: 8px 0;
+}
+.plan-summary .plan-list h3 {
+  font-size: 13px;
+}
+.plan-summary .plan-list p {
+  margin: 3px 0;
+}
+.plan-summary .plan-actions button {
+  font-size: 11px;
+  min-height: 28px;
+  padding: 3px 7px;
+}
+.catalog-complete {
+  background: #eaf6f1;
+  color: #1c665a;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin: 0 0 12px;
+}
+#step-heading:focus {
+  outline: none;
+}
+.plan-scroll:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: -2px;
+}
+.analysis-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.analysis-summary h3 {
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+.analysis-summary p {
+  font-size: 13px;
+  margin: 0;
+}
+.advisor > .hint {
+  margin: 0 0 12px;
+}
+.advisor details {
+  margin-top: 12px;
+}
+.district-results td,
+.district-results th {
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+.result-hero h2 {
+  margin: 0 0 3px;
+  font-size: 21px;
+}
+.result-hero .score-subtitle {
+  font-size: 11px;
+}
+@media (max-width: 760px) {
+  .desktop-plan {
+    display: none;
+  }
+  .modal .plan-summary {
+    max-height: calc(100dvh - 180px);
+  }
+  .analysis-summary {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .plan-summary .plan-actions button {
+    min-height: 36px;
+  }
+}
+
+/* District scores share an untruncated 0–100 scale. */
+.comparison-legend, .comparison-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.comparison-legend { gap: 18px; margin: 12px 0; font-size: .85rem; }
+.comparison-legend i { width: 16px; height: 8px; border-radius: 2px; }
+.comparison-before { background: #8295aa; }
+.comparison-after { background: #0b887e; }
+.district-comparison { list-style: none; margin: 0; padding: 0; }
+.district-comparison > li {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr) 66px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e7edf1;
+}
+.comparison-bars { min-width: 0; }
+.comparison-bar-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 8px;
+  font-size: .85rem;
+}
+.comparison-bar-row + .comparison-bar-row { margin-top: 5px; }
+.comparison-track { height: 9px; background: #eef3f5; border-radius: 3px; }
+.comparison-fill { display: block; height: 100%; border-radius: inherit; }
+.comparison-value, .comparison-delta { text-align: right; font-variant-numeric: tabular-nums; }
+.comparison-exact { margin-top: 14px; }
+.comparison-exact table { width: 100%; min-width: 0; }
+@media (max-width: 600px) {
+  .district-comparison > li { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; }
+  .comparison-bars { grid-column: 1 / -1; grid-row: 2; }
+  .comparison-delta { grid-column: 2; grid-row: 1; }
+  .district-results .comparison-exact th,
+  .district-results .comparison-exact td { padding: 8px 3px; font-size: .75rem; }
+}

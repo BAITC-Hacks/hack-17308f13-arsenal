@@ -49,3 +49,24 @@ it("неполный ответ и отсутствие текста счита�
     ).rejects.toThrow();
   }
 });
+
+it("SDK получает строгую схему фактов и замен без свободных утверждений", async () => {
+  create.mockResolvedValueOnce({ status: "completed", output_text: "{}" });
+  await requestAnalysis({}, "model", "test-placeholder");
+  const call = create.mock.calls.at(-1)![0];
+  expect(call.text.format).toMatchObject({
+    type: "json_schema",
+    strict: true,
+    name: "grounded_analysis",
+  });
+  expect(call.text.format.schema.additionalProperties).toBe(false);
+  expect(Object.keys(call.text.format.schema.properties)).toEqual([
+    "improvementFactId",
+    "problemFactId",
+    "detailFactIds",
+    "replacement",
+  ]);
+  expect(call.instructions).toContain(
+    "В плане уже пять мер: можно предложить только замену одной меры или изменение её района",
+  );
+});

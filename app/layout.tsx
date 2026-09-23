@@ -3,7 +3,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Аким на 5 часов",
   description:
-    "Пять решений для лучшего города. Симулятор на синтетических данных.",
+    "Пять мероприятий для лучшего города. Симулятор на синтетических данных.",
 };
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (

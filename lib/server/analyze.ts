@@ -2,9 +2,15 @@ import "server-only";
 import { scenarioSchema } from "../scenario-schema";
 import { validateScenario } from "../validate";
 import { simulateScenario } from "../simulate";
-import { DATA_VERSION, labels } from "../../data/rules";
+import { DATA_VERSION } from "../../data/rules";
 import { requestAnalysis } from "./openai";
 import { limits, readBody, RequestLimits } from "./request-limits";
+import {
+  ANALYSIS_VERSION,
+  buildAnalysisContext,
+  verifyAnalysis,
+} from "./analysis-context";
+import { analysisSchema } from "../analysis-schema";
 const reply = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 export function createAnalyzeHandler(
@@ -67,13 +73,14 @@ export function createAnalyzeHandler(
     const result = simulateScenario(parsed.data.decisions),
       key = JSON.stringify([
         DATA_VERSION,
+        ANALYSIS_VERSION,
         config.OPENAI_MODEL,
         result.scenarioId,
       ]);
     const cached = guard.get(key);
     if (cached)
       return reply({
-        analysis: cached,
+        analysis: analysisSchema.parse(JSON.parse(cached)),
         scenarioId: result.scenarioId,
         cached: true,
       });
@@ -83,12 +90,13 @@ export function createAnalyzeHandler(
         429,
       );
     try {
-      const analysis = await provider(
-        { dataVersion: DATA_VERSION, indicatorNames: labels, ...result },
+      const raw = await provider(
+        buildAnalysisContext(result, parsed.data.decisions),
         config.OPENAI_MODEL,
         config.OPENAI_API_KEY,
       );
-      guard.set(key, analysis);
+      const analysis = verifyAnalysis(raw, result, parsed.data.decisions);
+      guard.set(key, JSON.stringify(analysis));
       return reply({ analysis, scenarioId: result.scenarioId, cached: false });
     } catch {
       return reply(

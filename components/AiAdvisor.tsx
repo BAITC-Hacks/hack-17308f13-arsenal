@@ -1,34 +1,4 @@
 import type { AiState } from "../lib/ai-client";
-// Render only text nodes. Recognize the provider's headings without interpreting HTML.
-export function AnalysisText({ text }: { text: string }) {
-  return (
-    <div className="ai-text">
-      {text.split(/\n\s*\n/).map((block, i) => {
-        const lines = block.split("\n");
-        return (
-          <div key={i}>
-            {lines.map((line, j) => {
-              const clean = line
-                .trim()
-                .replace(/^#{1,6}\s*/, "")
-                .replace(/^\*\*(.*?)\*\*:?$/, "$1")
-                .replace(/^\d+[.)]\s*/, "");
-              const heading =
-                /^(Сильные стороны|Оставшиеся проблемы|Компромиссы|Риски|Рекомендации)[:.]?$/.test(
-                  clean,
-                );
-              return heading ? (
-                <h3 key={j}>{clean.replace(/[:.]$/, "")}</h3>
-              ) : (
-                <p key={j}>{line.replace(/^[-*]\s/, "• ")}</p>
-              );
-            })}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 export default function AiAdvisor({
   state,
   onRetry,
@@ -38,31 +8,49 @@ export default function AiAdvisor({
 }) {
   return (
     <section className="card advisor" aria-labelledby="ai-title">
-      <p className="eyebrow">AI-СОВЕТНИК</p>
-      <h2 id="ai-title">Объяснение AI</h2>
-      <p className="muted">
-        Числа рассчитаны симулятором. AI объясняет сильные стороны, компромиссы,
-        риски и рекомендации.
+      <h2 id="ai-title">AI-разбор вашего плана</h2>
+      <p className="hint">
+        AI выбирает факты о плане. Числа берутся из расчёта учебной модели.
       </p>
       <div aria-live="polite" aria-busy={state.status === "loading"}>
         {state.status === "loading" && (
-          <p role="status">Готовим объяснение вашего плана…</p>
+          <p role="status">Анализируем ваш план…</p>
         )}
         {state.status === "disabled" && (
-          <p>
-            AI-разбор сейчас недоступен: он выключен или ещё не настроен. Расчёт
-            готов.
-          </p>
+          <p>AI-разбор сейчас недоступен. Результаты расчёта доступны.</p>
         )}
         {state.status === "error" && (
-          <p role="alert">Не удалось загрузить AI-разбор. Расчёт готов.</p>
+          <p role="alert">
+            Не удалось получить AI-разбор. Результаты расчёта доступны.
+          </p>
         )}
-        {state.status === "success" && state.text && (
-          <AnalysisText text={state.text} />
+        {state.status === "success" && state.analysis && (
+          <>
+            <div className="analysis-summary">
+              {[
+                ["Главное улучшение", state.analysis.improvement],
+                ["Что осталось проблемой", state.analysis.problem],
+                ["Что можно изменить", state.analysis.next],
+              ].map(([title, text]) => (
+                <div key={title}>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                </div>
+              ))}
+            </div>
+            {state.analysis.details.length > 0 && (
+              <details>
+                <summary>Подробный анализ</summary>
+                {state.analysis.details.map((text, i) => (
+                  <p key={i}>{text}</p>
+                ))}
+              </details>
+            )}
+          </>
         )}
       </div>
       {(state.status === "error" || state.status === "disabled") && (
-        <button onClick={onRetry}>Повторить</button>
+        <button onClick={onRetry}>Повторить анализ</button>
       )}
     </section>
   );
